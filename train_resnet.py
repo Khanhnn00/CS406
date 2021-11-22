@@ -13,18 +13,24 @@ import torchvision.models as models
 
 from tqdm import tqdm
 
-from network import ResNet
+from models.network import PaperNet
 from dataloader import ImageDataset
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "6"
+torch.set_num_threads(8)
 
 if torch.cuda.is_available():
     device = 'cuda'
 else:
     device = 'cpu'
-
-batch_size = 64
+# print(device)
+ 
+batch_size = 128
 epochs = 30
+
+log_fol = './log_resnet'
+if not os.path.exists(log_fol):
+    os.mkdir(log_fol)
 
 def fit(model, train_data, train_loader, criterion, optimizer):
     print('Training')
@@ -84,22 +90,35 @@ def test(model, test_loader):
 
 
 def main():
-    augments = ['crop', 'jitter', 'pca', 'flipflop', 'rot', 'edge']
-    raw_x = np.load('../dataset/new_data/org.npy', allow_pickle=True)
-    raw_y = np.load('../dataset/new_data/org_label.npy', allow_pickle=True)
+    augments = ['org', 'crop', 'pca', 'flipflop', 'edge', 'rot','jitter']
+    # augments = ['crop', 'jitter', 'pca', 'flipflop']
 
-    X, x_val , Y, y_val = train_test_split(raw_x, raw_y, 
-                                                            test_size=0.2,
-                                                            random_state=42)
-    raw_x, x_test, raw_y, y_test = train_test_split(X, Y, 
-                                                            test_size=0.2, 
-                                                            random_state=42)
-                                    
-    np.save('./fixed_x_val.npy', x_val)
-    np.save('./fixed_y_val.npy', y_val)     
-    np.save('./fixed_x_test.npy', x_test)     
-    np.save('./fixed_y_test.npy', y_test)
-                        
+    #######OLD LOAD########################################################
+    # raw_x = np.load('../dataset/new_data/org.npy', allow_pickle=True)
+    # raw_y = np.load('../dataset/new_data/org_label.npy', allow_pickle=True)
+
+    # X, x_val , Y, y_val = train_test_split(raw_x, raw_y, 
+    #                                                         test_size=0.2,
+    #                                                         random_state=42)
+    # raw_x, x_test, raw_y, y_test = train_test_split(X, Y, 
+    #                                                         test_size=0.2, 
+    #                                                         random_state=42)
+    # np.save('./fixed_x_raw.npy', raw_x)
+    # np.save('./fixed_y_raw.npy', raw_y)                      
+    # np.save('./fixed_x_val.npy', x_val)
+    # np.save('./fixed_y_val.npy', y_val)     
+    # np.save('./fixed_x_test.npy', x_test)     
+    # np.save('./fixed_y_test.npy', y_test)
+    #######OLD LOAD######################################################## 
+    print('Loading fixed train/val/test set...')
+    raw_x = np.load('./fixed_x_raw.npy', allow_pickle=True)
+    raw_y = np.load('./fixed_y_raw.npy', allow_pickle=True)
+    x_val = np.load('./fixed_x_val.npy', allow_pickle=True)
+    y_val = np.load('./fixed_y_val.npy', allow_pickle=True)
+    x_test = np.load('./fixed_x_test.npy', allow_pickle=True)
+    y_test = np.load('./fixed_y_test.npy', allow_pickle=True)
+    print('Finished loading')
+
     val_data = ImageDataset(x_val, y_val)
     test_data = ImageDataset(x_test, y_test)
     val_loader = torch.utils.data.DataLoader(
@@ -122,15 +141,13 @@ def main():
         train_data = ImageDataset(x_train, y_train)
 
         train_loader = torch.utils.data.DataLoader(
-            train_data, batch_size=batch_size, shuffle=True, num_workers=0)
+            train_data, batch_size=batch_size, shuffle=True, num_workers=8)
 
-        model = models.resnet34(pretrained=True, progress=True)
-        model.fc = nn.Linear(512, 101, bias=True)
-        model.fc.bias.data.zero_()
-
+        model = models.resnet34(pretrained=False)
+        model.fc = nn.Linear(in_features=512, out_features=101)
         model = model.to(device)
 
-        optimizer = optim.Adam(model.parameters(), lr=1e-4)
+        optimizer = optim.Adam(model.parameters(), lr=2e-4, weight_decay = 0.0005)
         # loss function
         criterion = nn.CrossEntropyLoss()
         train_loss , train_accuracy = [], []
@@ -148,10 +165,10 @@ def main():
             val_accuracy.append(val_epoch_accuracy)
             if val_epoch_accuracy > val_acc:
                 val_acc = val_epoch_accuracy
-                torch.save(model.state_dict(), f"./best_ckp_{aug}.pth")
+                torch.save(model.state_dict(), f"./{log_fol}/best_ckp_{aug}.pth")
         end = time.time()
         print((end-start)/60, 'minutes')
-        torch.save(model.state_dict(), f"./last_ckp_{aug}.pth")
+        torch.save(model.state_dict(), f"./{log_fol}/last_ckp_{aug}.pth")
         # accuracy plots
         plt.figure(figsize=(10, 7))
         plt.plot(train_accuracy, color='green', label='train accuracy')
@@ -159,7 +176,7 @@ def main():
         plt.xlabel('Epochs')
         plt.ylabel('Accuracy')
         plt.legend()
-        plt.savefig('./accuracy_{}.png'.format(aug))
+        plt.savefig('./{}/accuracy_{}.png'.format(log_fol, aug))
         # loss plots
         plt.figure(figsize=(10, 7))
         plt.plot(train_loss, color='orange', label='train loss')
@@ -167,6 +184,6 @@ def main():
         plt.xlabel('Epochs')
         plt.ylabel('Loss')
         plt.legend()
-        plt.savefig('./loss_{}.png'.format(aug))
+        plt.savefig('./{}/loss_{}.png'.format(log_fol, aug))
 
 main()
