@@ -13,16 +13,16 @@ else:
     device = 'cpu'
 # print(device)
 
-log_fol = './log_paper'
+log_fol = './log_paper_Khanh'
 
 augments = ['org', 'crop', 'jitter', 'pca', 'flipflop', 'rot', 'edge']
 
-x_test = np.load('./fixed_x_test.npy', allow_pickle=True)
-y_test = np.load('./fixed_y_test.npy', allow_pickle=True)
+x_test = np.load('../dataset/subset_data/subset_subset_test.npy', allow_pickle=True)
+y_test = np.load('../dataset/subset_data/subset_subset_test_label.npy', allow_pickle=True)
 test_data = ImageDataset(x_test, y_test)
 test_loader = torch.utils.data.DataLoader(
             test_data, batch_size=64, shuffle=True, num_workers=0)
-model = PaperNet()
+model = PaperNet(num_classes=10)
 model = model.to(device)
 
 def test(model, test_loader):

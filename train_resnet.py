@@ -90,8 +90,8 @@ def test(model, test_loader):
 
 
 def main():
-    augments = ['org', 'crop', 'pca', 'flipflop', 'edge', 'rot','jitter']
-    # augments = ['crop', 'jitter', 'pca', 'flipflop']
+    # augments = ['org', 'crop', 'pca', 'flipflop', 'edge', 'rot','jitter']
+    augments = ['rot', 'jitter']
 
     #######OLD LOAD########################################################
     # raw_x = np.load('../dataset/new_data/org.npy', allow_pickle=True)

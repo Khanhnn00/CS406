@@ -27,7 +27,9 @@ else:
  
 batch_size = 128
 epochs = 30
-log_fol = './log_paper'
+log_fol = './log_resnet_Khanh'
+if not os.path.exists(log_fol):
+    os.mkdir(log_fol)
 
 def fit(model, train_data, train_loader, criterion, optimizer):
     print('Training')
@@ -87,29 +89,28 @@ def test(model, test_loader):
 
 
 def main():
-    # augments = ['org', 'crop', 'jitter', 'pca', 'flipflop', 'rot', 'edge']
-    augments = ['rot', 'jitter']
+    augments = ['org', 'crop', 'jitter', 'pca', 'flipflop', 'rot', 'edge']
+    # augments = ['rot', 'jitter']
 
     #######OLD LOAD########################################################
-    # raw_x = np.load('../dataset/new_data/org.npy', allow_pickle=True)
-    # raw_y = np.load('../dataset/new_data/org_label.npy', allow_pickle=True)
+    raw_x = np.load('../dataset/subset_data/subset_subset.npy', allow_pickle=True)
+    raw_y = np.load('../dataset/subset_data/subset_subset_label.npy', allow_pickle=True)
 
-    # X, x_val , Y, y_val = train_test_split(raw_x, raw_y, 
-    #                                                         test_size=0.2,
-    #                                                         random_state=42)
-    # raw_x, x_test, raw_y, y_test = train_test_split(X, Y, 
-    #                                                         test_size=0.2, 
-    #                                                         random_state=42)
-    # np.save('./fixed_x_raw.npy', raw_x)
-    # np.save('./fixed_y_raw.npy', raw_y)                      
+    # X = np.load('../dataset/subset_data/subset_subset_test.npy', allow_pickle=True)
+    # Y = np.load('../dataset/subset_data/subset_subset_test_label.npy', allow_pickle=True)
+
+    # x_test, x_val , y_test, y_val = train_test_split(raw_x, raw_y, 
+    #                                                         test_size=0.5,
+    #                                                         random_state=10)
+                 
     # np.save('./fixed_x_val.npy', x_val)
     # np.save('./fixed_y_val.npy', y_val)     
     # np.save('./fixed_x_test.npy', x_test)     
     # np.save('./fixed_y_test.npy', y_test)
     #######OLD LOAD######################################################## 
-    print('Loading fixed train/val/test set...')
-    raw_x = np.load('./fixed_x_raw.npy', allow_pickle=True)
-    raw_y = np.load('./fixed_y_raw.npy', allow_pickle=True)
+    print('Loading fixed val/test set...')
+    # raw_x = np.load('./fixed_x_raw.npy', allow_pickle=True)
+    # raw_y = np.load('./fixed_y_raw.npy', allow_pickle=True)
     x_val = np.load('./fixed_x_val.npy', allow_pickle=True)
     y_val = np.load('./fixed_y_val.npy', allow_pickle=True)
     x_test = np.load('./fixed_x_test.npy', allow_pickle=True)
@@ -126,8 +127,8 @@ def main():
 
     for aug in augments:
         if aug != 'org':
-            x_train = np.load('../dataset/new_data/{}.npy'.format(aug), allow_pickle=True)
-            y_train = np.load('../dataset/new_data/{}_label.npy'.format(aug), allow_pickle=True)
+            x_train = np.load('../dataset/subset_data/subset_{}.npy'.format(aug), allow_pickle=True)
+            y_train = np.load('../dataset/subset_data/subset_{}_label.npy'.format(aug), allow_pickle=True)
 
             x_train = np.concatenate((x_train, raw_x), axis=0)
             y_train = np.concatenate((y_train, raw_y), axis=0)
@@ -140,7 +141,8 @@ def main():
         train_loader = torch.utils.data.DataLoader(
             train_data, batch_size=batch_size, shuffle=True, num_workers=8)
 
-        model = PaperNet()
+        model = models.resnet34(pretrained=False)
+        model.fc = nn.Linear(in_features=512, out_features=10)
         model = model.to(device)
 
         optimizer = optim.Adam(model.parameters(), lr=2e-4, weight_decay = 0.0005)
@@ -161,10 +163,10 @@ def main():
             val_accuracy.append(val_epoch_accuracy)
             if val_epoch_accuracy > val_acc:
                 val_acc = val_epoch_accuracy
-                torch.save(model.state_dict(), f"./{log_fol}/best_ckp_paper_{aug}.pth")
+                torch.save(model.state_dict(), f"./{log_fol}/best_ckp_{aug}.pth")
         end = time.time()
         print((end-start)/60, 'minutes')
-        torch.save(model.state_dict(), f"./{log_fol}/last_ckp_paper_{aug}.pth")
+        torch.save(model.state_dict(), f"./{log_fol}/last_ckp_{aug}.pth")
         # accuracy plots
         plt.figure(figsize=(10, 7))
         plt.plot(train_accuracy, color='green', label='train accuracy')
@@ -172,7 +174,7 @@ def main():
         plt.xlabel('Epochs')
         plt.ylabel('Accuracy')
         plt.legend()
-        plt.savefig('./{}/accuracy_paper_{}.png'.format(log_fol, aug))
+        plt.savefig('./{}/accuracy_{}.png'.format(log_fol, aug))
         # loss plots
         plt.figure(figsize=(10, 7))
         plt.plot(train_loss, color='orange', label='train loss')
@@ -180,6 +182,6 @@ def main():
         plt.xlabel('Epochs')
         plt.ylabel('Loss')
         plt.legend()
-        plt.savefig('./{}/loss_paper_{}.png'.format(log_fol, aug))
+        plt.savefig('./{}/loss_{}.png'.format(log_fol, aug))
 
 main()

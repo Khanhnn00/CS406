@@ -3,6 +3,8 @@ import numpy as np
 import os
 from models.network import PaperNet
 from dataloader import ImageDataset
+import torchvision.models as models
+import torch.nn as nn
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "6"
 torch.set_num_threads(8)
@@ -13,8 +15,6 @@ else:
     device = 'cpu'
 # print(device)
 
-log_fol = './log_paper'
-
 augments = ['org', 'crop', 'jitter', 'pca', 'flipflop', 'rot', 'edge']
 
 x_test = np.load('./fixed_x_test.npy', allow_pickle=True)
@@ -22,7 +22,9 @@ y_test = np.load('./fixed_y_test.npy', allow_pickle=True)
 test_data = ImageDataset(x_test, y_test)
 test_loader = torch.utils.data.DataLoader(
             test_data, batch_size=64, shuffle=True, num_workers=0)
-model = PaperNet()
+
+model = models.resnet34(pretrained=False)
+model.fc = nn.Linear(in_features=512, out_features=101)
 model = model.to(device)
 
 def test(model, test_loader):
@@ -43,7 +45,7 @@ def test(model, test_loader):
 for augment in augments:
     print('-'*50)
     print('Testing {} augmentation'.format(augment))
-    checkpoint = torch.load('./{}/best_ckp_paper_{}.pth'.format(log_fol, augment))
+    checkpoint = torch.load('./log_resnet/best_ckp_{}.pth'.format(augment))
     model.load_state_dict(checkpoint)
 
     correct, total, predicted, target = test(model, test_loader)
